@@ -1,0 +1,245 @@
+
+
+## Figure 1
+
+```{r}
+# load libraries
+library(tidyverse)
+
+# read the data (using read_csv since the uploaded file is a .csv)
+df <- read_csv("02_activities/assignment_3_code/new_sif_data_table_2024_25prelim_en_april2026.csv")
+
+```
+
+```{r}
+g3_col <- "Percentage of Grade 3 Students Achieving the Provincial Standard in Mathematics"
+g6_col <- "Percentage of Grade 6 Students Achieving the Provincial Standard in Mathematics"
+
+# clean up percentages: strip the '%' sign and convert to numeric
+df <- df %>%
+  mutate(
+    g3_math = as.numeric(str_replace_all(!!sym(g3_col), "%", "")),
+    g6_math = as.numeric(str_replace_all(!!sym(g6_col), "%", ""))
+  )
+
+```
+
+
+```{r}
+
+# get overall prov avgs
+prov_g3 <- mean(df$g3_math, na.rm = TRUE)
+prov_g6 <- mean(df$g6_math, na.rm = TRUE)
+drop_diff <- prov_g3 - prov_g6
+
+
+g3_col <- "Percentage of Grade 3 Students Achieving the Provincial Standard in Mathematics"
+g6_col <- "Percentage of Grade 6 Students Achieving the Provincial Standard in Mathematics"
+
+# clean up percentages: strip the '%' sign and convert to numeric
+df <- df %>%
+  mutate(
+    g3_math = as.numeric(str_replace_all(!!sym(g3_col), "%", "")),
+    g6_math = as.numeric(str_replace_all(!!sym(g6_col), "%", ""))
+  )
+
+```
+
+```{r}
+
+# get overall prov avgs
+prov_g3 <- mean(df$g3_math, na.rm = TRUE)
+prov_g6 <- mean(df$g6_math, na.rm = TRUE)
+drop_diff <- prov_g3 - prov_g6
+
+# get board averages for the background lines
+# dropping small boards (<20 schools) so it's not a noisy mess
+boards <- df %>%
+  group_by(`Board Name`) %>%
+  summarize(
+    g3_math = mean(g3_math, na.rm = TRUE),
+    g6_math = mean(g6_math, na.rm = TRUE),
+    school_count = n()
+  ) %>%
+  filter(school_count > 20) %>%
+  drop_na(g3_math, g6_math)
+
+```
+
+```{r}
+# build the plot
+p <- ggplot() +
+  
+  # fake vertical grid lines to ground the points
+  geom_vline(xintercept = c(1, 2), color = "#DDDDDD", linewidth = 0.5) +
+  
+  # draw faint lines for all the individual boards
+  geom_segment(data = boards, 
+               aes(x = 1, xend = 2, y = g3_math, yend = g6_math),
+               color = "#B0B0B0", alpha = 0.3, linewidth = 0.8) +
+  
+  # main line for provincial avg
+  geom_segment(aes(x = 1, xend = 2, y = prov_g3, yend = prov_g6),
+               color = "#007FA3", linewidth = 2) +
+  geom_point(aes(x = c(1, 2), y = c(prov_g3, prov_g6)),
+             color = "#007FA3", size = 4) +
+  
+  # labels
+  annotate("text", x = 0.95, y = prov_g3, 
+           label = sprintf("Provincial Avg:\n%.1f%%", prov_g3),
+           color = "#007FA3", fontface = "bold", size = 4, hjust = 1) +
+  annotate("text", x = 2.05, y = prov_g6, 
+           label = sprintf("Provincial Avg:\n%.1f%%", prov_g6),
+           color = "#007FA3", fontface = "bold", size = 4, hjust = 0) +
+  
+  # x labels
+  annotate("text", x = 1, y = 85, label = "Grade 3 Math", fontface = "bold", size = 5, color = "#333333") +
+  annotate("text", x = 2, y = 85, label = "Grade 6 Math", fontface = "bold", size = 5, color = "#333333") +
+  
+  # draw  arrow
+  annotate("text", x = 1.5, y = 75, 
+           label = sprintf("A %.1f%% drop\nin provincial\nproficiency", drop_diff),
+           color = "#007FA3", fontface = "bold", size = 4, lineheight = 0.9) +
+  geom_curve(aes(x = 1.5, y = 71, xend = 1.5, yend = (prov_g3 + prov_g6)/2 + 2),
+             color = "#007FA3", curvature = 0.2, 
+             arrow = arrow(length = unit(0.02, "npc"))) +
+  
+  # clean up axes
+  scale_x_continuous(limits = c(0.6, 2.4)) +
+  scale_y_continuous(limits = c(20, 90), breaks = seq(20, 80, 10),
+                     labels = function(x) paste0(x, "%")) +
+  
+  # titles and footer
+  labs(
+    title = "The Middle-Elementary Math Bottleneck",
+    subtitle = "Ontario students experience a significant drop in mathematical proficiency between Grade 3 and Grade 6.\nGrey lines represent individual school board averages.",
+    caption = "Data: Ontario School Information Framework (SIF) 2024-2025 | Analysis of boards with >20 schools"
+  ) +
+  
+  # completely strip out chart junk
+  theme_minimal() +
+  theme(
+    plot.background = element_rect(fill = "#FAFAFA", color = NA),
+    panel.background = element_rect(fill = "#FAFAFA", color = NA),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major.y = element_line(color = "#EEEEEE"),
+    axis.title = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_text(color = "#777777", size = 10),
+    plot.title = element_text(face = "bold", size = 16, color = "#222222", margin = margin(b = 10)),
+    plot.subtitle = element_text(size = 11, color = "#555555", margin = margin(b = 20)),
+    plot.caption = element_text(size = 9, color = "#888888", hjust = 0, margin = margin(t = 20))
+  )
+
+# save
+ggsave("02_activities/assignment_3_code/math_dropoff_r.png", plot = p, width = 9, height = 7, dpi = 300, bg = "#FAFAFA")
+
+```
+
+```{r}
+p
+```
+
+```{r}
+getwd()
+```
+
+### Figure 2
+
+```{r}
+# libraries used
+library(tidyverse)
+library(ggtext) 
+
+```
+
+```{r}
+
+#find top 10 boards and calc avg
+top_10 <- df %>%
+  group_by(`Board Name`) %>%
+  summarise(
+    g3_math = mean(g3_math, na.rm = TRUE),
+    g6_math = mean(g6_math, na.rm = TRUE),
+    `School Number` = n(),
+    .groups = 'drop'
+  ) %>%
+  drop_na(g3_math, g6_math) %>%
+  # top 10 
+  slice_max(order_by = `School Number`, n = 10) %>%
+  # sort by Grade 3 Math score
+  mutate(`Board Name` = fct_reorder(`Board Name`, g3_math)) %>%
+  # calc the drop value and midpoint
+  mutate(
+    drop_val = g3_math - g6_math,
+    mid_point = (g3_math + g6_math) / 2
+  )
+  top_10
+```
+
+
+```{r}
+
+# init plot
+p2 <- ggplot(top_10, aes(y = `Board Name`)) +
+  
+  # connecting lines
+  geom_segment(aes(x = g6_math, xend = g3_math, yend = `Board Name`), 
+               color = "#B0B0B0", alpha = 0.7, linewidth = 2) +
+  
+  # g3/g6 dots
+  geom_point(aes(x = g3_math), color = "#007FA3", size = 5) +
+  geom_point(aes(x = g6_math), color = "#6FC7EA", size = 5) +
+  
+  # drop labels
+  geom_label(aes(x = mid_point, label = sprintf("-%.1f%%", drop_val)),
+             vjust = -0.4, size = 3, fontface = "bold", color = "#333333",
+             fill = "#FAFAFA", label.size = 0, label.padding = unit(0.1, "lines")) +
+  
+  # fix x axis
+  scale_x_continuous(limits = c(40, 75), 
+                     breaks = c(40, 50, 60, 70), 
+                     labels = function(x) paste0(x, "%")) +
+  
+  # titles + hacky html legend
+  labs(
+    title = "Mathematics Drop-off in Ontario's Top 10 Largest School Boards",
+    subtitle = "Every major board experiences a drop in proficiency, but the severity ranges from 8.3% to nearly 20%.<br><br><span style='color:#6FC7EA'>**Grade 6 Math**</span> <span style='color:#555555'>vs</span> <span style='color:#007FA3'>**Grade 3 Math**</span>",
+    x = NULL,
+    y = NULL
+  ) +
+  
+  # theme cleanup
+  theme_minimal() +
+  theme(
+    # bg
+    plot.background = element_rect(fill = "#FAFAFA", color = NA),
+    panel.background = element_rect(fill = "#FAFAFA", color = NA),
+    
+    # grid
+    panel.grid.major.x = element_line(color = "#EEEEEE", linewidth = 0.5),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    
+    # fonts
+    axis.text.y = element_text(color = "#444444", face = "bold", size = 10),
+    axis.text.x = element_text(color = "#777777"),
+    plot.title = element_text(face = "bold", size = 16, color = "#222222", margin = margin(b = 5)),
+    plot.subtitle = element_markdown(size = 11, color = "#555555", margin = margin(b = 15)),
+    
+    # margins
+    plot.margin = margin(t = 20, r = 20, b = 20, l = 20)
+  )
+```
+
+```{r}
+# save
+ggsave("02_activities/assignment_3_code/top10_math_dropoff_r.png", plot = p2, width = 10, height = 7, dpi = 300, bg = "#FAFAFA")
+
+```
+
+```{r}
+p2
+```
